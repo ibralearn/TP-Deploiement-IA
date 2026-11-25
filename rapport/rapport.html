@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport technique — Chaînes de déploiement d'un modèle d'IA</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  html { font-family: "DejaVu Serif", Georgia, serif; font-size: 11pt; color: #1b1b1b; line-height: 1.42; }
+  body { margin: 0; }
+  h1, h2, h3, .title, th, .caption, .kpi, .meta { font-family: "DejaVu Sans", Arial, sans-serif; }
+  .cover { height: 245mm; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; }
+  .title { font-size: 25pt; font-weight: 700; line-height: 1.15; margin-top: 30mm; color: #111; }
+  .subtitle { font-family: "DejaVu Sans", sans-serif; font-size: 13.5pt; color: #444; margin-top: 6mm; }
+  .bar { height: 4px; width: 60mm; background: #257de0; margin: 10mm 0 8mm; }
+  .meta { font-size: 10.5pt; color: #333; line-height: 1.7; }
+  .meta b { display: inline-block; width: 42mm; color: #666; font-weight: 400; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin-bottom: 6mm; }
+  .kpi { border-top: 3px solid #257de0; padding-top: 3mm; font-size: 9pt; color: #555; }
+  .kpi .v { font-size: 19pt; font-weight: 700; color: #111; display: block; margin-bottom: 1mm; }
+  .kpi.o { border-color: #f47230; } .kpi.g { border-color: #8a8984; }
+  h1 { font-size: 16pt; margin: 0 0 3mm; padding-top: 2mm; color: #111; page-break-after: avoid; }
+  h1.newpage { page-break-before: always; }
+  h2 { font-size: 12.5pt; margin: 6mm 0 2mm; color: #1a1a1a; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 4mm 0 1.5mm; color: #333; page-break-after: avoid; }
+  p { margin: 0 0 2.6mm; text-align: justify; hyphens: auto; }
+  ul { margin: 0 0 2.6mm; padding-left: 6mm; } li { margin-bottom: 1.2mm; text-align: justify; }
+  table { border-collapse: collapse; width: 100%; margin: 2mm 0 4mm; font-size: 9pt; page-break-inside: avoid; }
+  th { background: #f1f0ec; text-align: left; font-weight: 700; font-size: 8.5pt; padding: 1.6mm 1.8mm; border-bottom: 1.5px solid #bdbcb5; }
+  td { padding: 1.3mm 1.8mm; border-bottom: 0.6px solid #e2e1dc; vertical-align: top; font-family: "DejaVu Sans", sans-serif; }
+  td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr.sep td { border-top: 1.4px solid #bdbcb5; }
+  .t-small td, .t-small th { font-size: 8.3pt; padding: 1.1mm 1.5mm; }
+  figure { margin: 3mm 0 4mm; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; }
+  .caption { font-size: 8.8pt; color: #555; margin-top: 1.5mm; }
+  .box { background: #f6f6f3; border-left: 3px solid #257de0; padding: 2.5mm 3.5mm; margin: 2mm 0 4mm; page-break-inside: avoid; }
+  .box.warn { border-color: #f2a600; }
+  .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+  code { font-family: "DejaVu Sans Mono", monospace; font-size: 8.8pt; background: #f1f0ec; padding: 0 1mm; border-radius: 1mm; }
+  .sw { display: inline-block; width: 3mm; height: 3mm; vertical-align: -0.3mm; margin-right: 1mm; }
+  .toc { font-family: "DejaVu Sans", sans-serif; font-size: 10pt; line-height: 1.75; }
+  .toc span { color: #888; display: inline-block; width: 9mm; }
+  .avoid { page-break-inside: avoid; }
+  .t-stats td, .t-stats th { font-size: 7.6pt; padding: 1.0mm 1.2mm; }
+  .t-stats td:first-child { white-space: nowrap; }
+  .t-stats th.c { text-align: center; border-bottom: 0.6px solid #bdbcb5; }
+  .toc a { color: #1b1b1b; text-decoration: none; } .toc a:hover { text-decoration: underline; }
+  a.toclink { color: #1a5fb4; }
+  .t-synth td, .t-synth th { font-size: 7.5pt; padding: 1.1mm 1.0mm; }
+  .t-synth td:first-child { white-space: nowrap; }
+  table.t-synth { page-break-inside: auto; } .t-synth tr { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ============================== COUVERTURE ============================== -->
+<section class="cover">
+  <div>
+    <div class="title">Chaînes de déploiement<br>d'un modèle d'IA</div>
+    <div class="subtitle">Rapport technique du TP n°1 — comparaison de quatre pipelines d'inférence de ResNet-18 sur CPU et GPU (Google Colab)</div>
+    <div class="bar"></div>
+    <div class="meta">
+      <b>Auteurs</b> [noms des membres du groupe à compléter]<br>
+      <b>Modèle</b> ResNet-18 pré-entraîné ImageNet, tête 10 classes<br>
+      <b>Données</b> 50 images de test CIFAR-10 (5 par classe)<br>
+      <b>Pipeline CPU n°1</b> PyTorch → ONNX → OpenVINO → CPU<br>
+      <b>Pipeline CPU n°2</b> PyTorch → TorchScript / torch.compile → CPU<br>
+      <b>Pipeline GPU n°1</b> PyTorch → ONNX → TensorRT → CUDA/cuDNN → GPU<br>
+      <b>Pipeline GPU n°2</b> PyTorch → TorchScript / torch.compile → CUDA → GPU<br>
+      <b>Matériel</b> Colab CPU Intel Xeon 2,2 GHz (2 vCPU) · Colab GPU NVIDIA Tesla T4<br>
+      <b>Mesures</b> 16 et 25 novembre 2026
+    </div>
+  </div>
+  <div>
+    <div class="kpis">
+      <div class="kpi"><span class="v">×4,19</span>TensorRT FP16 contre PyTorch eager sur le même GPU (4 272 img/s)</div>
+      <div class="kpi"><span class="v">×2,52</span>OpenVINO INT8 contre PyTorch eager sur le même CPU (27,6 img/s)</div>
+      <div class="kpi o"><span class="v">×78 à ×93</span>GPU T4 contre CPU 2 vCPU, PyTorch eager FP32 dans les deux cas</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi g"><span class="v">90 %</span>Top-1 de toutes les variantes FP32 et FP16, sans aucune prédiction modifiée</div>
+      <div class="kpi g"><span class="v">−77 %</span>énergie GPU par image avec TensorRT FP16 (15,9 mJ contre 69,0 mJ)</div>
+      <div class="kpi g"><span class="v">CV ≈ 20 %</span>variabilité du débit sur CPU, contre moins de 1,5 % sur GPU en FP32</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== SOMMAIRE ============================== -->
+<h1>Sommaire</h1>
+<div class="toc"><span>1</span><a href="#s1">Objectif et démarche</a><br><span>2</span><a href="#s2">Les quatre pipelines de déploiement</a><br><span>3</span><a href="#s3">Protocole expérimental</a><br><span>4</span><a href="#s4">Résultats : tableau de synthèse et statistiques détaillées</a><br><span></span><a href="#s4-1">&nbsp;&nbsp;&nbsp;&nbsp;4.1 Tableau de synthèse</a><br><span></span><a href="#s4-2">&nbsp;&nbsp;&nbsp;&nbsp;4.2 Statistiques par indicateur (moyenne, écart-type, min, max)</a><br><span>5</span><a href="#s5">Performances de traitement : débit, latence, accélération</a><br><span>6</span><a href="#s6">Qualité des prédictions</a><br><span>7</span><a href="#s7">Consommation énergétique</a><br><span>8</span><a href="#s8">Stabilité et reproductibilité des mesures</a><br><span>9</span><a href="#s9">Analyse détaillée de chaque pipeline</a><br><span>10</span><a href="#s10">Comparaison des pipelines et des plateformes</a><br><span>11</span><a href="#s11">Limites de l'étude</a><br><span>12</span><a href="#s12">Conclusion</a><br><span>A</span><a href="#sA">Annexe : environnements logiciels et fichiers du dépôt</a><br></div>
+
+<h2>Résumé</h2>
+<p>Nous avons déployé le même ResNet-18 (pré-entraîné ImageNet, tête 10 classes) à travers quatre chaînes logicielles, deux sur CPU et deux sur GPU, et mesuré sur les mêmes 50 images CIFAR-10 le débit, la latence, la précision Top-1, l'accord des prédictions et l'énergie par image, chaque indicateur étant répété (5 passes de chauffe, 10 passes mesurées, 3 mesures d'énergie). Sur GPU, <b>TensorRT FP16</b> est le plus performant : 4 272 img/s, soit ×4,19 par rapport à PyTorch eager sur le même T4, et 77 % d'énergie en moins par image, sans aucune prédiction modifiée. Sur CPU, <b>OpenVINO INT8</b> double le débit (×2,52) au prix de 2 prédictions sur 50 modifiées ; en FP32, OpenVINO, TorchScript et torch.compile apportent ×1,24 à ×1,48, mais ces écarts restent du même ordre que la forte variabilité des mesures CPU sur Colab (CV ≈ 20 %). Le GPU est 78 à 93 fois plus rapide que le CPU à implémentation égale. Toutes les variantes FP32 et FP16 donnent exactement les mêmes 50 prédictions que le modèle PyTorch d'origine.</p>
+
+<!-- ============================== 1 ============================== -->
+<h1 class="newpage" id="s1">1. Objectif et démarche</h1>
+<p>L'objectif du TP est de comprendre, mettre en œuvre et comparer plusieurs chaînes de déploiement d'un même modèle d'IA, afin d'observer l'effet de chaque couche logicielle sur les performances d'inférence. Chaque chaîne suit l'enchaînement vu en cours : <b>haut niveau → format du modèle → middle level → bas niveau → matériel</b>.</p>
+<p>Nous avons réalisé quatre notebooks Google Colab, un par pipeline. Pour que la comparaison soit équitable, les quatre notebooks partagent exactement le même code de préparation (sélection des images, prétraitement, construction du modèle 10 classes), les mêmes paramètres expérimentaux et les mêmes outils de mesure. Les fichiers communs (images prétraitées, poids, fichier ONNX) sont créés une seule fois et rechargés par les autres notebooks depuis un dossier Google Drive partagé ; une empreinte SHA-256 vérifie que tous les pipelines reçoivent les mêmes octets d'entrée.</p>
+<p>Dans chaque notebook, le pipeline étudié est toujours comparé à une <b>référence PyTorch eager FP32 mesurée dans la même session</b>, sur la même machine. Comme les machines Colab changent d'une session à l'autre, les accélérations (rapport au débit de cette référence) sont plus fiables que les débits bruts pour comparer des pipelines mesurés à des moments différents.</p>
+
+<!-- ============================== 2 ============================== -->
+<h1 id="s2">2. Les quatre pipelines de déploiement</h1>
+<table>
+  <tr><th style="width:16%">Couche</th><th>CPU n°1</th><th>CPU n°2</th><th>GPU n°1</th><th>GPU n°2</th></tr>
+  <tr><td><b>Haut niveau</b></td><td>PyTorch</td><td>PyTorch</td><td>PyTorch</td><td>PyTorch</td></tr>
+  <tr><td><b>Format du modèle</b></td><td>ONNX (opset 17)</td><td>TorchScript ; graphe FX (TorchDynamo)</td><td>ONNX (même fichier que CPU n°1)</td><td>TorchScript ; graphe FX (TorchDynamo)</td></tr>
+  <tr><td><b>Middle level</b></td><td>OpenVINO Runtime 2026.4 (fusion, choix des kernels) ; NNCF pour l'INT8</td><td>freeze + optimize_for_inference ; torch.compile / Inductor (C++, OpenMP)</td><td>TensorRT 11.5 (fusion, chronométrage des tactics, FP16)</td><td>freeze + optimize_for_inference ; torch.compile / Inductor (Triton), CUDA Graphs</td></tr>
+  <tr><td><b>Bas niveau</b></td><td>oneDNN : <code>brgconv_avx2_f32</code>, <code>jit_avx2</code></td><td>oneDNN (mkldnn_convolution), code C++ généré</td><td>CUDA 13.0, cuDNN 9.28, kernels TensorRT</td><td>CUDA, cuDNN, kernels Triton générés</td></tr>
+  <tr><td><b>Matériel</b></td><td colspan="2">Colab CPU : Intel Xeon 2,2 GHz, 2 vCPU (AVX2)</td><td colspan="2">Colab GPU : NVIDIA Tesla T4 (Turing, sm 7.5, Tensor Cores, plafond 70 W)</td></tr>
+  <tr><td><b>Variantes mesurées</b></td><td>FP32 ; INT8 (quantification post-entraînement)</td><td>TorchScript FP32 ; torch.compile FP32 ; compile + freezing FP32</td><td>FP32 ; FP16</td><td>TorchScript FP32 ; torch.compile FP32 ; + freezing ; + CUDA Graphs FP32 et FP16</td></tr>
+</table>
+<p>Les pipelines n°1 (<span class="sw" style="background:#257de0"></span>bleu dans les graphiques) passent par un <b>format d'échange (ONNX)</b> et un <b>moteur d'inférence spécialisé</b> pour une famille de matériel (Intel pour OpenVINO, NVIDIA pour TensorRT). Les pipelines n°2 (<span class="sw" style="background:#f47230"></span>orange) restent dans l'<b>écosystème PyTorch</b> : TorchScript fige le graphe par traçage, torch.compile le capture avec TorchDynamo puis le compile avec Inductor. La référence eager est en <span class="sw" style="background:#8a8984"></span>gris ; les variantes FP16 sont hachurées en biais et la variante INT8 en croisillons.</p>
+
+<!-- ============================== 3 ============================== -->
+<h1 id="s3">3. Protocole expérimental</h1>
+<h2>3.1 Modèle et données</h2>
+<ul>
+  <li><b>Modèle</b> : ResNet-18 de torchvision pré-entraîné sur ImageNet (poids <code>IMAGENET1K_V1</code>). La couche finale (512 → 1000) est remplacée par une couche 512 → 10, apprise par <i>linear probing</i> (réseau pré-entraîné gelé) sur 3 000 images d'entraînement CIFAR-10 (300 par classe), avec la graine 42. Précision de validation de la tête : 80,8 % sur 500 images de test distinctes des 50 images évaluées.</li>
+  <li><b>Données</b> : 50 images du jeu de test CIFAR-10, tirées avec une graine fixe à raison de 5 par classe (sous-ensemble équilibré). Les mêmes indices et la même empreinte SHA-256 des entrées (<code>117a8d62…</code>) sont vérifiés dans les quatre notebooks.</li>
+  <li><b>Prétraitement</b> (fonction unique) : conversion uint8 → float32 dans [0, 1] ; redimensionnement bilinéaire 32×32 → 224×224 (résolution d'entraînement de ResNet-18) ; normalisation avec les statistiques ImageNet (moyenne 0,485 / 0,456 / 0,406, écart-type 0,229 / 0,224 / 0,225). Le prétraitement est fait une fois pour toutes et n'est pas chronométré.</li>
+</ul>
+<h2>3.2 Mesures</h2>
+<ul>
+  <li><b>Batch</b> de 10 images, soit 5 batches par passe sur les 50 images ; même batch pour tous les pipelines.</li>
+  <li><b>5 passes de chauffe</b> non mesurées (allocations, compilation à la volée, autotuning de cuDNN, montée en fréquence), puis <b>10 passes mesurées</b> chronométrées avec <code>time.perf_counter()</code>. Sur GPU, une synchronisation CUDA attend la fin réelle du calcul avant d'arrêter le chronomètre.</li>
+  <li><b>Indicateurs par passe</b> : temps total des 50 images, débit (50 / temps, en images/s), latence de chaque batch (moyenne, médiane, maximum), précision Top-1, accord avec la référence. Pour chaque indicateur : moyenne, écart-type, minimum, maximum et coefficient de variation (CV = σ / moyenne).</li>
+  <li><b>Énergie</b> : 3 mesures indépendantes, chacune sur une boucle d'inférence d'au moins 10 s.
+    <ul>
+      <li>GPU : compteur d'énergie de la carte lu par <b>NVML</b> (valeur <b>mesurée</b>, carte seule) ; la puissance au repos (26 à 28 W) est mesurée au départ pour calculer aussi une énergie nette.</li>
+      <li>CPU : le compteur RAPL n'est pas accessible sur les VM Colab ; l'énergie est donc <b>estimée</b> par E ≈ 10 W × temps CPU actif (somme sur les vCPU, lue par psutil). Cette estimation compare correctement les pipelines CPU entre eux, mais sa valeur absolue dépend de l'hypothèse de 10 W par vCPU actif.</li>
+    </ul></li>
+  <li><b>Qualité</b> : Top-1 sur les 50 images, accord Top-1 avec la référence eager de la session et écart maximal des logits (max |Δlogit|).</li>
+</ul>
+<h2>3.3 Sessions d'exécution</h2>
+<table class="t-small">
+  <tr><th>Notebook</th><th>Session</th><th>Machine</th><th class="n">Réf. eager (img/s)</th></tr>
+  <tr><td>CPU n°1 — OpenVINO</td><td><code>ov_20261116-085931</code></td><td>Xeon 2,2 GHz, 2 vCPU</td><td class="n">10,97</td></tr>
+  <tr><td>CPU n°2 — TorchScript / torch.compile</td><td><code>pt_20261116-104050</code></td><td>Xeon 2,2 GHz, 2 vCPU</td><td class="n">12,59</td></tr>
+  <tr><td>GPU n°1 — TensorRT</td><td><code>trt_20261125-163952</code> (+ une session antérieure le même jour)</td><td>Tesla T4, Xeon 2,0 GHz</td><td class="n">1 020,38</td></tr>
+  <tr><td>GPU n°2 — TorchScript / torch.compile</td><td><code>ptgpu_20261125-172615</code></td><td>Tesla T4, Xeon 2,0 GHz</td><td class="n">980,15</td></tr>
+</table>
+<p>Les quatre notebooks utilisent les mêmes images, le même prétraitement, le même batch et les mêmes nombres de passes. Le notebook GPU n°1 a été exécuté dans deux sessions indépendantes, sur deux comptes Colab différents, ce qui permet d'évaluer la reproductibilité entre sessions (section 8).</p>
+
+<!-- ============================== 4 ============================== -->
+<h1 class="newpage" id="s4">4. Résultats : tableau de synthèse</h1>
+<h2 id="s4-1">4.1 Tableau de synthèse</h2>
+<p>Le tableau ci-dessous rassemble les moyennes, écarts-types et plages [min ; max] sur les 10 passes mesurées. L'accélération est calculée par rapport à la référence eager de la même session.</p>
+<table class="t-synth">
+  <thead><tr><th>Variante</th><th class="n">Débit (img/s)<br>moy ± σ</th><th class="n">[min ; max]</th><th class="n">CV</th><th class="n">Latence / batch (ms)</th><th class="n">Accél.</th><th class="n">Top-1</th><th class="n">Énergie / image (mJ)</th><th class="n">Prép.</th></tr></thead>
+  <tr><td><b>CPU-1</b> · Réf. eager FP32</td><td class="n">10,97 ± 2,30</td><td class="n">[7,2 ; 13,1]</td><td class="n">21,0 %</td><td class="n">954,7 ± 229,0</td><td class="n">×1,00</td><td class="n">90 %</td><td class="n">1 896 ± 70 *</td><td class="n">—</td></tr>
+  <tr><td>CPU-1 · OpenVINO FP32</td><td class="n">13,63 ± 2,33</td><td class="n">[10,3 ; 16,1]</td><td class="n">17,1 %</td><td class="n">755,0 ± 140,0</td><td class="n">×1,24</td><td class="n">90 %</td><td class="n">1 039 ± 277 *</td><td class="n">1,2 s</td></tr>
+  <tr><td>CPU-1 · OpenVINO INT8</td><td class="n">27,63 ± 4,21</td><td class="n">[19,8 ; 31,5]</td><td class="n">15,2 %</td><td class="n">370,9 ± 65,8</td><td class="n">×2,52</td><td class="n">92 %</td><td class="n">558 ± 102 *</td><td class="n">28 s</td></tr>
+  <tr class="sep"><td><b>CPU-2</b> · Réf. eager FP32</td><td class="n">12,59 ± 2,69</td><td class="n">[8,4 ; 14,8]</td><td class="n">21,4 %</td><td class="n">833,8 ± 208,1</td><td class="n">×1,00</td><td class="n">90 %</td><td class="n">1 623 ± 129 *</td><td class="n">—</td></tr>
+  <tr><td>CPU-2 · TorchScript FP32</td><td class="n">15,74 ± 3,69</td><td class="n">[10,3 ; 18,8]</td><td class="n">23,5 %</td><td class="n">674,1 ± 185,3</td><td class="n">×1,25</td><td class="n">90 %</td><td class="n">1 316 ± 116 *</td><td class="n">7,2 s</td></tr>
+  <tr><td>CPU-2 · torch.compile FP32</td><td class="n">16,62 ± 3,17</td><td class="n">[11,0 ; 19,2]</td><td class="n">19,1 %</td><td class="n">625,6 ± 140,6</td><td class="n">×1,32</td><td class="n">90 %</td><td class="n">1 220 ± 85 *</td><td class="n">34,9 s</td></tr>
+  <tr><td>CPU-2 · compile + freezing FP32</td><td class="n">18,60 ± 3,34</td><td class="n">[11,4 ; 20,6]</td><td class="n">18,0 %</td><td class="n">559,7 ± 136,8</td><td class="n">×1,48</td><td class="n">90 %</td><td class="n">1 196 ± 4 *</td><td class="n">9,2 s</td></tr>
+  <tr class="sep"><td><b>GPU-1</b> · Réf. eager FP32</td><td class="n">1 020,4 ± 6,1</td><td class="n">[1 009 ; 1 029]</td><td class="n">0,6 %</td><td class="n">9,80 ± 0,06</td><td class="n">×1,00</td><td class="n">90 %</td><td class="n">69,0 ± 0,5</td><td class="n">—</td></tr>
+  <tr><td>GPU-1 · TensorRT FP32</td><td class="n">1 235,4 ± 15,5</td><td class="n">[1 213 ; 1 259]</td><td class="n">1,3 %</td><td class="n">8,09 ± 0,10</td><td class="n">×1,21</td><td class="n">90 %</td><td class="n">55,8 ± 0,8</td><td class="n">7,4 s</td></tr>
+  <tr><td>GPU-1 · TensorRT FP16</td><td class="n">4 272,2 ± 111,2</td><td class="n">[4 070 ; 4 402]</td><td class="n">2,6 %</td><td class="n">2,34 ± 0,06</td><td class="n">×4,19</td><td class="n">90 %</td><td class="n">15,9 ± 0,2</td><td class="n">11,3 s</td></tr>
+  <tr class="sep"><td><b>GPU-2</b> · Réf. eager FP32</td><td class="n">980,1 ± 34,8</td><td class="n">[882 ; 1 002]</td><td class="n">3,6 %</td><td class="n">10,21 ± 0,40</td><td class="n">×1,00</td><td class="n">90 %</td><td class="n">71,9 ± 1,5</td><td class="n">—</td></tr>
+  <tr><td>GPU-2 · TorchScript FP32</td><td class="n">1 152,5 ± 9,1</td><td class="n">[1 141 ; 1 165]</td><td class="n">0,8 %</td><td class="n">8,68 ± 0,07</td><td class="n">×1,18</td><td class="n">90 %</td><td class="n">60,6 ± 0,6</td><td class="n">1,2 s</td></tr>
+  <tr><td>GPU-2 · torch.compile FP32</td><td class="n">880,5 ± 8,5</td><td class="n">[863 ; 889]</td><td class="n">1,0 %</td><td class="n">11,36 ± 0,11</td><td class="n">×0,90</td><td class="n">90 %</td><td class="n">78,6 ± 0,8</td><td class="n">18,0 s</td></tr>
+  <tr><td>GPU-2 · compile + freezing FP32</td><td class="n">881,8 ± 5,9</td><td class="n">[877 ; 891]</td><td class="n">0,7 %</td><td class="n">11,34 ± 0,08</td><td class="n">×0,90</td><td class="n">90 %</td><td class="n">75,8 ± 0,3</td><td class="n">6,4 s</td></tr>
+  <tr><td>GPU-2 · compile + CUDA Graphs FP32</td><td class="n">902,4 ± 6,0</td><td class="n">[894 ; 913]</td><td class="n">0,7 %</td><td class="n">11,08 ± 0,07</td><td class="n">×0,92</td><td class="n">90 %</td><td class="n">75,9 ± 1,2</td><td class="n">4,9 s</td></tr>
+  <tr><td>GPU-2 · compile + CUDA Graphs FP16</td><td class="n">2 922,7 ± 662,5</td><td class="n">[2 164 ; 3 587]</td><td class="n">22,7 %</td><td class="n">3,60 ± 0,86</td><td class="n">×2,98</td><td class="n">90 %</td><td class="n">20,0 ± 0,5</td><td class="n">8,8 s</td></tr>
+</table>
+<p class="caption">* Énergie CPU estimée (10 W par vCPU actif × temps CPU), énergie GPU mesurée par NVML pour la carte seule : les deux ne sont pas directement comparables (section 7). « Prép. » : temps de préparation (compilation OpenVINO, quantification INT8, construction des moteurs TensorRT, traçage TorchScript, compilation torch.compile) ; pour torch.compile, la première compilation de la session est la plus longue, les suivantes profitent des caches.</p>
+
+<h2 id="s4-2">4.2 Statistiques détaillées par indicateur (moyenne, écart-type, minimum, maximum)</h2>
+<p>Conformément aux consignes, chaque indicateur est résumé par sa moyenne, son écart-type (échantillon, ddof = 1), son minimum et son maximum. Les indicateurs de performance et de qualité portent sur les <b>10 passes mesurées</b> de chaque variante ; l'énergie porte sur les <b>3 mesures</b> d'au moins 10 s. Le coefficient de variation du débit figure dans le tableau de synthèse (section 4.1) et sur la figure 6.</p>
+<h3>Tableau A — Débit et latence</h3>
+<table class="t-stats"><thead><tr><th rowspan="2">Variante</th><th colspan="4" class="c">Débit (images/s)</th><th colspan="4" class="c">Latence d'un batch de 10 images (ms)</th></tr><tr><th class="n">moy.</th><th class="n">σ</th><th class="n">min</th><th class="n">max</th><th class="n">moy.</th><th class="n">σ</th><th class="n">min</th><th class="n">max</th></tr></thead><tr><td><b>CPU-1</b> · Réf. eager FP32</td><td class="n">10,97</td><td class="n">2,30</td><td class="n">7,23</td><td class="n">13,07</td><td class="n">954,7</td><td class="n">229,0</td><td class="n">765,1</td><td class="n">1 383,3</td></tr><tr><td>CPU-1 · OpenVINO FP32</td><td class="n">13,63</td><td class="n">2,33</td><td class="n">10,27</td><td class="n">16,11</td><td class="n">755,0</td><td class="n">140,0</td><td class="n">620,8</td><td class="n">973,5</td></tr><tr><td>CPU-1 · OpenVINO INT8</td><td class="n">27,63</td><td class="n">4,21</td><td class="n">19,76</td><td class="n">31,49</td><td class="n">370,9</td><td class="n">65,8</td><td class="n">317,5</td><td class="n">506,1</td></tr><tr class="sep"><td><b>CPU-2</b> · Réf. eager FP32</td><td class="n">12,59</td><td class="n">2,69</td><td class="n">8,39</td><td class="n">14,78</td><td class="n">833,8</td><td class="n">208,1</td><td class="n">676,6</td><td class="n">1 192,2</td></tr><tr><td>CPU-2 · TorchScript FP32</td><td class="n">15,74</td><td class="n">3,69</td><td class="n">10,28</td><td class="n">18,81</td><td class="n">674,1</td><td class="n">185,3</td><td class="n">531,6</td><td class="n">972,5</td></tr><tr><td>CPU-2 · torch.compile FP32</td><td class="n">16,62</td><td class="n">3,17</td><td class="n">10,98</td><td class="n">19,15</td><td class="n">625,6</td><td class="n">140,6</td><td class="n">522,3</td><td class="n">910,8</td></tr><tr><td>CPU-2 · compile + freezing FP32</td><td class="n">18,60</td><td class="n">3,34</td><td class="n">11,40</td><td class="n">20,58</td><td class="n">559,7</td><td class="n">136,8</td><td class="n">485,9</td><td class="n">876,9</td></tr><tr class="sep"><td><b>GPU-1</b> · Réf. eager FP32</td><td class="n">1 020,4</td><td class="n">6,1</td><td class="n">1 009,1</td><td class="n">1 029,0</td><td class="n">9,799</td><td class="n">0,059</td><td class="n">9,717</td><td class="n">9,908</td></tr><tr><td>GPU-1 · TensorRT FP32</td><td class="n">1 235,4</td><td class="n">15,5</td><td class="n">1 213,3</td><td class="n">1 258,6</td><td class="n">8,094</td><td class="n">0,101</td><td class="n">7,944</td><td class="n">8,240</td></tr><tr><td>GPU-1 · TensorRT FP16</td><td class="n">4 272,2</td><td class="n">111,2</td><td class="n">4 069,5</td><td class="n">4 402,5</td><td class="n">2,341</td><td class="n">0,062</td><td class="n">2,270</td><td class="n">2,456</td></tr><tr class="sep"><td><b>GPU-2</b> · Réf. eager FP32</td><td class="n">980,1</td><td class="n">34,8</td><td class="n">882,4</td><td class="n">1 002,4</td><td class="n">10,21</td><td class="n">0,40</td><td class="n">9,97</td><td class="n">11,33</td></tr><tr><td>GPU-2 · TorchScript FP32</td><td class="n">1 152,5</td><td class="n">9,0</td><td class="n">1 141,3</td><td class="n">1 164,8</td><td class="n">8,676</td><td class="n">0,069</td><td class="n">8,580</td><td class="n">8,761</td></tr><tr><td>GPU-2 · torch.compile FP32</td><td class="n">880,5</td><td class="n">8,5</td><td class="n">862,6</td><td class="n">889,4</td><td class="n">11,36</td><td class="n">0,11</td><td class="n">11,24</td><td class="n">11,59</td></tr><tr><td>GPU-2 · compile + freezing FP32</td><td class="n">881,8</td><td class="n">5,9</td><td class="n">876,9</td><td class="n">890,7</td><td class="n">11,34</td><td class="n">0,08</td><td class="n">11,23</td><td class="n">11,40</td></tr><tr><td>GPU-2 · compile + CUDA Graphs FP32</td><td class="n">902,4</td><td class="n">6,0</td><td class="n">894,4</td><td class="n">913,1</td><td class="n">11,08</td><td class="n">0,07</td><td class="n">10,95</td><td class="n">11,18</td></tr><tr><td>GPU-2 · compile + CUDA Graphs FP16</td><td class="n">2 922,6</td><td class="n">662,5</td><td class="n">2 164,0</td><td class="n">3 587,1</td><td class="n">3,595</td><td class="n">0,863</td><td class="n">2,787</td><td class="n">4,620</td></tr></table><p class="caption">Latence : moyenne, sur les 5 batches de chaque passe, du temps de traitement d'un batch ; les statistiques portent sur les 10 passes.</p>
+<h3>Tableau B — Temps d'inférence des 50 images et précision Top-1</h3>
+<table class="t-stats"><thead><tr><th rowspan="2">Variante</th><th colspan="4" class="c">Temps total pour 50 images (ms)</th><th colspan="4" class="c">Précision Top-1 (%)</th></tr><tr><th class="n">moy.</th><th class="n">σ</th><th class="n">min</th><th class="n">max</th><th class="n">moy.</th><th class="n">σ</th><th class="n">min</th><th class="n">max</th></tr></thead><tr><td><b>CPU-1</b> · Réf. eager FP32</td><td class="n">4 773,7</td><td class="n">1 144,9</td><td class="n">3 825,5</td><td class="n">6 916,3</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>CPU-1 · OpenVINO FP32</td><td class="n">3 774,8</td><td class="n">700,0</td><td class="n">3 103,9</td><td class="n">4 867,7</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>CPU-1 · OpenVINO INT8</td><td class="n">1 854,4</td><td class="n">328,9</td><td class="n">1 587,7</td><td class="n">2 530,3</td><td class="n">92</td><td class="n">0</td><td class="n">92</td><td class="n">92</td></tr><tr class="sep"><td><b>CPU-2</b> · Réf. eager FP32</td><td class="n">4 168,9</td><td class="n">1 040,6</td><td class="n">3 383,1</td><td class="n">5 961,3</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>CPU-2 · TorchScript FP32</td><td class="n">3 370,5</td><td class="n">926,4</td><td class="n">2 657,9</td><td class="n">4 862,3</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>CPU-2 · torch.compile FP32</td><td class="n">3 127,9</td><td class="n">703,0</td><td class="n">2 611,5</td><td class="n">4 554,1</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>CPU-2 · compile + freezing FP32</td><td class="n">2 798,7</td><td class="n">684,0</td><td class="n">2 429,3</td><td class="n">4 384,5</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr class="sep"><td><b>GPU-1</b> · Réf. eager FP32</td><td class="n">49,00</td><td class="n">0,29</td><td class="n">48,59</td><td class="n">49,55</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>GPU-1 · TensorRT FP32</td><td class="n">40,48</td><td class="n">0,51</td><td class="n">39,73</td><td class="n">41,21</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>GPU-1 · TensorRT FP16</td><td class="n">11,71</td><td class="n">0,31</td><td class="n">11,36</td><td class="n">12,29</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr class="sep"><td><b>GPU-2</b> · Réf. eager FP32</td><td class="n">51,08</td><td class="n">1,98</td><td class="n">49,88</td><td class="n">56,66</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>GPU-2 · TorchScript FP32</td><td class="n">43,39</td><td class="n">0,34</td><td class="n">42,92</td><td class="n">43,81</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>GPU-2 · torch.compile FP32</td><td class="n">56,79</td><td class="n">0,55</td><td class="n">56,22</td><td class="n">57,97</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>GPU-2 · compile + freezing FP32</td><td class="n">56,70</td><td class="n">0,38</td><td class="n">56,14</td><td class="n">57,02</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>GPU-2 · compile + CUDA Graphs FP32</td><td class="n">55,41</td><td class="n">0,37</td><td class="n">54,76</td><td class="n">55,90</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr><tr><td>GPU-2 · compile + CUDA Graphs FP16</td><td class="n">17,98</td><td class="n">4,31</td><td class="n">13,94</td><td class="n">23,11</td><td class="n">90</td><td class="n">0</td><td class="n">90</td><td class="n">90</td></tr></table><p class="caption">Le Top-1 est identique sur les 10 passes de chaque variante (écart-type nul, minimum = maximum) : l'inférence est déterministe, seule la durée varie.</p>
+<h3>Tableau C — Énergie et puissance</h3>
+<table class="t-stats"><thead><tr><th rowspan="2">Variante</th><th colspan="4" class="c">Énergie par image (mJ)</th><th colspan="4" class="c">Puissance moyenne (W)</th></tr><tr><th class="n">moy.</th><th class="n">σ</th><th class="n">min</th><th class="n">max</th><th class="n">moy.</th><th class="n">σ</th><th class="n">min</th><th class="n">max</th></tr></thead><tr><td><b>CPU-1</b> · Réf. eager FP32</td><td class="n">1 896</td><td class="n">70</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n">19,70</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td></tr><tr><td>CPU-1 · OpenVINO FP32</td><td class="n">1 039</td><td class="n">277</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n">13,59</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td></tr><tr><td>CPU-1 · OpenVINO INT8</td><td class="n">558</td><td class="n">102</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n">14,36</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td></tr><tr class="sep"><td><b>CPU-2</b> · Réf. eager FP32</td><td class="n">1 623</td><td class="n">129</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n">19,90</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td></tr><tr><td>CPU-2 · TorchScript FP32</td><td class="n">1 316</td><td class="n">116</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n">19,96</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td></tr><tr><td>CPU-2 · torch.compile FP32</td><td class="n">1 220</td><td class="n">85</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n">19,95</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td></tr><tr><td>CPU-2 · compile + freezing FP32</td><td class="n">1 196</td><td class="n">4</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n">19,96</td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td><td class="n"><span style="color:#999">n.d.</span></td></tr><tr class="sep"><td><b>GPU-1</b> · Réf. eager FP32</td><td class="n">69,02</td><td class="n">0,49</td><td class="n">68,59</td><td class="n">69,55</td><td class="n">68,31</td><td class="n">0,46</td><td class="n">67,82</td><td class="n">68,74</td></tr><tr><td>GPU-1 · TensorRT FP32</td><td class="n">55,80</td><td class="n">0,75</td><td class="n">55,12</td><td class="n">56,61</td><td class="n">66,83</td><td class="n">0,17</td><td class="n">66,70</td><td class="n">67,02</td></tr><tr><td>GPU-1 · TensorRT FP16</td><td class="n">15,88</td><td class="n">0,21</td><td class="n">15,70</td><td class="n">16,11</td><td class="n">66,55</td><td class="n">0,54</td><td class="n">65,97</td><td class="n">67,05</td></tr><tr class="sep"><td><b>GPU-2</b> · Réf. eager FP32</td><td class="n">71,86</td><td class="n">1,52</td><td class="n">70,71</td><td class="n">73,59</td><td class="n">68,58</td><td class="n">0,23</td><td class="n">68,32</td><td class="n">68,74</td></tr><tr><td>GPU-2 · TorchScript FP32</td><td class="n">60,55</td><td class="n">0,55</td><td class="n">60,12</td><td class="n">61,17</td><td class="n">67,60</td><td class="n">0,65</td><td class="n">67,14</td><td class="n">68,35</td></tr><tr><td>GPU-2 · torch.compile FP32</td><td class="n">78,57</td><td class="n">0,77</td><td class="n">77,90</td><td class="n">79,42</td><td class="n">67,14</td><td class="n">0,65</td><td class="n">66,62</td><td class="n">67,87</td></tr><tr><td>GPU-2 · compile + freezing FP32</td><td class="n">75,79</td><td class="n">0,33</td><td class="n">75,42</td><td class="n">75,99</td><td class="n">66,78</td><td class="n">0,15</td><td class="n">66,65</td><td class="n">66,95</td></tr><tr><td>GPU-2 · compile + CUDA Graphs FP32</td><td class="n">75,92</td><td class="n">1,17</td><td class="n">75,12</td><td class="n">77,25</td><td class="n">67,06</td><td class="n">0,31</td><td class="n">66,84</td><td class="n">67,42</td></tr><tr><td>GPU-2 · compile + CUDA Graphs FP16</td><td class="n">20,04</td><td class="n">0,46</td><td class="n">19,65</td><td class="n">20,55</td><td class="n">67,16</td><td class="n">0,34</td><td class="n">66,86</td><td class="n">67,53</td></tr></table><p class="caption">GPU : mesure NVML de la carte, 3 mesures. CPU : estimation (10 W × temps CPU actif) ; les notebooks CPU n'affichent que la moyenne et l'écart-type de l'énergie (et la moyenne de la puissance) : le minimum et le maximum (n.d.) sont enregistrés dans les fichiers <code>results/*.json</code> du Drive de l'exécution CPU et peuvent être ajoutés à partir de ces fichiers.</p>
+<!-- ============================== 5 ============================== -->
+<h1 class="newpage" id="s5">5. Performances de traitement</h1>
+<h2>5.1 Débit</h2>
+<figure><img src="../figures/fig1_debit.png" alt="Débit des quatre pipelines">
+<div class="caption">Figure 1 — Débit moyen sur 10 passes (barres d'erreur : ± 1 écart-type). Les échelles des deux panneaux diffèrent d'un facteur 100 : CPU et GPU ne sont pas tracés sur le même axe.</div></figure>
+<p><b>Sur CPU</b>, toutes les variantes restent entre 11 et 28 img/s. En FP32, les gains sont modestes : OpenVINO ×1,24, TorchScript ×1,25, torch.compile ×1,32 et torch.compile avec freezing ×1,48. Ces écarts sont du même ordre que les barres d'erreur, qui sont très larges (σ ≈ 2 à 4 img/s) : les plages [min ; max] de toutes les variantes FP32 se chevauchent, ce qui empêche de les départager de manière robuste (section 8). La seule différence nette est la quantification <b>INT8</b> d'OpenVINO, qui double le débit (27,6 img/s ; son minimum, 19,8 img/s, dépasse le maximum de toutes les variantes FP32).</p>
+<p><b>Sur GPU</b>, les débits sont de l'ordre du millier d'images par seconde. En FP32, seuls TensorRT (×1,21) et TorchScript (×1,18) accélèrent l'inférence ; les trois variantes torch.compile sont environ 10 % plus lentes que la référence eager. Le passage en <b>FP16</b> change d'échelle : 4 272 img/s avec TensorRT et 2 923 img/s avec torch.compile + CUDA Graphs, grâce aux Tensor Cores du T4.</p>
+
+<h2>5.2 Temps d'inférence (latence)</h2>
+<figure><img src="../figures/fig2_latence.png" alt="Latence par batch">
+<div class="caption">Figure 2 — Latence moyenne d'un batch de 10 images (moyenne ± écart-type sur les 10 passes mesurées).</div></figure>
+<p>La latence d'un batch suit l'inverse du débit, puisque les batches sont traités l'un après l'autre. Sur CPU, un batch de 10 images prend entre 371 ms (OpenVINO INT8) et 955 ms (eager), avec des écarts-types de 66 à 229 ms. Sur GPU, il prend entre 2,34 ms (TensorRT FP16) et 11,4 ms (torch.compile FP32), avec des écarts-types de l'ordre de 0,1 ms. À la référence eager, le GPU traite un batch <b>environ 97 fois plus vite</b> que le CPU (9,80 ms contre 954,7 ms). La variante FP16 + CUDA Graphs se distingue par une latence instable (3,60 ± 0,86 ms).</p>
+
+<h2>5.3 Accélération par rapport à la référence de la même session</h2>
+<figure><img src="../figures/fig5_acceleration.png" alt="Accélération">
+<div class="caption">Figure 3 — Accélération du débit par rapport à la référence eager mesurée dans la même session (barres d'erreur : incertitude relative combinée de la variante et de la référence).</div></figure>
+<p>Exprimées en accélération, les variantes des deux plateformes deviennent comparables sur un même axe. Trois enseignements ressortent :</p>
+<ul>
+  <li><b>En FP32, les gains se situent entre ×0,9 et ×1,5</b> sur les deux plateformes. Ce plafond s'explique par la nature de ResNet-18 : l'essentiel du temps est passé dans les convolutions (97,6 % sur CPU d'après le profilage OpenVINO), que tous les moteurs confient aux mêmes bibliothèques de bas niveau (oneDNN sur CPU, cuDNN sur GPU). Les optimisations de graphe ne gagnent donc que sur le reste : BatchNorm, ReLU, additions et coût de lancement des opérations.</li>
+  <li><b>La réduction de précision est le levier principal</b> : ×2,52 en INT8 sur CPU, ×4,19 (TensorRT) et ×2,98 (torch.compile) en FP16 sur GPU.</li>
+  <li>Sur CPU, l'incertitude sur les accélérations est grande (barres de ± 0,3 à ± 0,6) à cause de la variabilité des mesures ; sur GPU elle est inférieure à ± 0,05 en FP32.</li>
+</ul>
+
+<!-- ============================== 6 ============================== -->
+<h1 class="newpage" id="s6">6. Qualité des prédictions</h1>
+<figure><img src="../figures/fig3_top1.png" alt="Top-1 et accord">
+<div class="caption">Figure 4 — À gauche, précision Top-1 sur les 50 images ; à droite, pourcentage des 50 prédictions identiques à celles de la référence PyTorch eager.</div></figure>
+<table class="t-small">
+  <tr><th>Variante</th><th class="n">max |Δlogit| vs eager</th><th class="n">Accord Top-1</th><th class="n">Top-1</th><th>Interprétation</th></tr>
+  <tr><td>Toutes les variantes FP32 (OpenVINO, TorchScript, torch.compile, TensorRT)</td><td class="n">2,9·10⁻⁵ à 7,3·10⁻⁵</td><td class="n">100 %</td><td class="n">90 %</td><td>Écarts d'arrondi flottant : ordre des opérations et algorithmes de convolution différents</td></tr>
+  <tr><td>GPU-2 · torch.compile + CUDA Graphs FP16</td><td class="n">4,6·10⁻²</td><td class="n">100 %</td><td class="n">90 %</td><td>Demi-précision (10 bits de mantisse), accumulation en FP32</td></tr>
+  <tr><td>GPU-1 · TensorRT FP16</td><td class="n">1,0·10⁻¹</td><td class="n">100 %</td><td class="n">90 %</td><td>Demi-précision, accumulation en FP16 : écart deux fois plus grand</td></tr>
+  <tr><td>CPU-1 · OpenVINO INT8</td><td class="n">1,74</td><td class="n">96 %</td><td class="n">92 %</td><td>Quantification 8 bits : 2 prédictions sur 50 changent</td></tr>
+</table>
+<p>Les optimisations <b>ne dégradent pas les prédictions</b> en FP32 : les logits diffèrent de moins de 10⁻⁴ de ceux de la référence, l'accord Top-1 est de 100 % dans les quatre pipelines et le Top-1 vaut 90 % (45 images sur 50) partout. Sur GPU, où nous avons comparé les prédictions image par image, les 5 erreurs sont les mêmes pour toutes les variantes : une grenouille et deux cerfs pris pour des oiseaux, un oiseau pris pour un cerf, une automobile prise pour un navire. En FP16, les écarts de logits sont environ 1 000 fois plus grands, mais aucune prédiction ne change. Les kernels utilisés par torch.compile accumulent les produits en FP32 (<code>f16f16_f16f32</code>) alors que le réseau TensorRT les accumule en FP16 (<code>f16f16_f16f16</code>), ce qui explique l'écart deux fois plus grand de TensorRT.</p>
+<p>L'INT8 est la seule variante qui modifie des prédictions : 2 images sur 50 changent de classe (accord 96 %), avec un écart de logits de 1,74. Le Top-1 passe de 90 à 92 %, mais ce n'est pas une amélioration du modèle : sur 50 images, une image vaut 2 points et un changement de ± 1 image est dans le bruit d'un échantillon aussi petit. Nous avons d'ailleurs observé le même phénomène dans une première session TensorRT FP16, où une image limite (une grenouille) avait été corrigée (92 %) avant de redevenir fausse dans la session suivante (90 %). Il faudrait évaluer l'INT8 sur un plus grand jeu de test pour mesurer sa perte de précision réelle.</p>
+
+<!-- ============================== 7 ============================== -->
+<h1 id="s7">7. Consommation énergétique</h1>
+<figure><img src="../figures/fig4_energie.png" alt="Énergie par image">
+<div class="caption">Figure 5 — Énergie par image (moyenne ± écart-type sur 3 mesures). À gauche, estimation CPU (10 W × temps CPU actif) ; à droite, mesure NVML de la carte GPU.</div></figure>
+<p><b>Sur GPU</b>, la puissance moyenne en charge est presque identique pour toutes les variantes (66,6 à 68,6 W, près du plafond de 70 W du T4). L'énergie par image suit donc directement le temps par image (E ≈ P × t) : par exemple 68,3 W × 0,98 ms ≈ 67 mJ pour eager (69,0 mJ mesurés). La variante la plus rapide est aussi la plus sobre : TensorRT FP16 consomme <b>15,9 mJ par image, soit 77 % de moins qu'eager</b> ; torch.compile FP16, 20,0 mJ (−72 %) ; TensorRT FP32 et TorchScript, −19 % et −16 %. À l'inverse, les variantes torch.compile FP32, plus lentes, consomment 5 à 9 % de plus qu'eager.</p>
+<p><b>Sur CPU</b>, l'estimation est proportionnelle au temps CPU consommé. Les variantes PyTorch occupent les deux vCPU (≈ 20 W estimés), si bien que leur gain d'énergie suit leur gain de temps (−19 à −26 %). OpenVINO occupe moins de temps CPU pour le même travail (≈ 14 W estimés) : son gain d'énergie (−45 % en FP32, −71 % en INT8) dépasse son gain de débit. Cette lecture dépend toutefois entièrement de l'hypothèse de 10 W par vCPU actif.</p>
+<div class="box warn"><p><b>Comparaison CPU / GPU à interpréter avec prudence.</b> À la référence eager, l'énergie par image est de 1 623 à 1 896 mJ sur CPU (estimée) contre 69 à 72 mJ sur GPU (mesurée), soit un rapport de 23 à 27. Mais la valeur GPU ne compte que la carte (ni le CPU hôte qui pilote le GPU, ni la mémoire), et la valeur CPU repose sur une hypothèse de puissance. Le sens de l'écart est robuste (le GPU traite chaque image ~90 fois plus vite pour une puissance seulement ~3,5 fois plus élevée), sa valeur exacte ne l'est pas.</p></div>
+
+<!-- ============================== 8 ============================== -->
+<h1 class="newpage" id="s8">8. Stabilité et reproductibilité des mesures</h1>
+<figure><img src="../figures/fig6_variabilite.png" alt="Variabilité">
+<div class="caption">Figure 6 — À gauche, coefficient de variation du débit sur les 10 passes (seuils indicatifs : < 2 % très stable, > 5 % variable). À droite, plage des 10 passes exprimée en % de la moyenne de chaque variante.</div></figure>
+<h2>8.1 Variabilité au sein d'une session</h2>
+<ul>
+  <li><b>Les mesures CPU sont très variables</b> : CV de 15 à 23 %, avec des passes qui s'écartent jusqu'à −39 % et +19 % de la moyenne. Les VM Colab CPU n'ont que 2 vCPU partagés : l'ordonnanceur, les autres processus (Jupyter, l'échantillonnage de psutil) et les variations de fréquence se répercutent directement sur une inférence qui occupe les deux cœurs. La passe la plus lente atteint 1,38 s par batch en moyenne pour eager, contre 0,95 s sur l'ensemble des passes. Conséquence : sur CPU, seules les différences importantes (INT8) sont significatives ; les écarts entre variantes FP32 (×1,24 à ×1,48) ne le sont pas avec 10 passes.</li>
+  <li><b>Les mesures GPU FP32 sont très stables</b> : CV de 0,6 à 1,3 % pour TensorRT, TorchScript et torch.compile, avec des plages [min ; max] qui ne se chevauchent pas entre variantes. La référence eager de la session GPU-2 est moins stable (3,6 %) à cause d'une seule passe lente (882 img/s pour une médiane proche de 990).</li>
+  <li><b>Les variantes à très faible latence sont plus sensibles</b> : TensorRT FP16 (CV 2,6 %) et surtout torch.compile + CUDA Graphs FP16 (CV 22,7 %, passes entre 2 164 et 3 587 img/s). Quand un batch ne dure que 2 à 4 ms, les variations de fréquence du GPU (plafond de puissance, température) et du CPU qui lance les calculs pèsent beaucoup en relatif.</li>
+</ul>
+<h2>8.2 Reproductibilité entre sessions indépendantes</h2>
+<p>Le pipeline GPU n°1 a été exécuté dans deux sessions indépendantes (deux comptes Colab, deux machines T4). Les résultats sont reproductibles à moins de 2 % près : eager 1 019 → 1 020 img/s, TensorRT FP32 1 254 → 1 235 img/s (−1,5 %), TensorRT FP16 4 284 → 4 272 img/s (−0,3 %) ; énergie par image 69,0 → 69,0, 56,1 → 55,8 et 16,0 → 15,9 mJ. En revanche, la référence eager varie davantage entre notebooks différents : de 4 % entre les deux sessions GPU (1 020 et 980 img/s) et de 15 % entre les deux sessions CPU (11,0 et 12,6 img/s). C'est pourquoi nous comparons les pipelines par leur accélération par rapport à la référence de leur propre session.</p>
+
+<h2>8.3 Effet de la taille de batch sur GPU (étude complémentaire)</h2>
+<figure><img src="../figures/fig7_taille_batch_gpu.png" alt="Taille de batch">
+<div class="caption">Figure 7 — Débit en fonction de la taille de batch (1, 10, 50), 5 passes par point, hors protocole commun (la comparaison principale reste au batch 10).</div></figure>
+<p>Au <b>batch 1</b>, le GPU est sous-utilisé et le temps est dominé par les coûts fixes (lancement d'une centaine de kernels, appels Python) : c'est là que les optimisations de graphe rapportent le plus (TensorRT FP32 ×2,4, TorchScript ×1,6, CUDA Graphs ×1,5 par rapport à eager). Au <b>batch 50</b>, le calcul domine et l'avantage FP32 se réduit (TensorRT ×1,07, CUDA Graphs ×0,94), tandis que le FP16 continue de progresser (5 294 img/s pour TensorRT) car les Tensor Cores ont besoin de beaucoup de travail en parallèle. Augmenter le batch améliore le débit mais allonge la latence de chaque batch (TensorRT FP16 : 0,67 ms au batch 1, 9,4 ms au batch 50) : c'est le compromis latence / débit. Pour la plupart des variantes, ces mesures au batch 10 refaites en fin de notebook sont 5 à 13 % plus basses que les mesures principales, ce qui illustre aussi l'effet de l'état thermique du GPU.</p>
+
+<!-- ============================== 9 ============================== -->
+<h1 class="newpage" id="s9">9. Analyse détaillée de chaque pipeline</h1>
+<h2>9.1 CPU n°1 : PyTorch → ONNX → OpenVINO → oneDNN</h2>
+<ul>
+  <li><b>Format</b> : export ONNX (opset 17, axe batch dynamique, <i>constant folding</i>) en 1,7 s ; fichier de 44,7 Mo à 49 nœuds (20 Conv, 17 Relu, 8 Add, MaxPool, GlobalAveragePool, Flatten, Gemm). La BatchNorm est déjà repliée dans les poids des convolutions lors de l'export.</li>
+  <li><b>Middle level</b> : <code>read_model</code> 0,36 s, <code>compile_model</code> 0,83 s. Le graphe compilé ne contient plus que 20 couches Convolution, 1 Pooling, 1 Reduce (moyenne globale), 1 FullyConnected et 2 Reorder (changements de disposition mémoire), plus des constantes : <b>les 17 ReLU et les 8 additions résiduelles ont été fusionnées</b> dans les convolutions.</li>
+  <li><b>Bas niveau</b> : le profilage d'un batch (614 ms) montre que <b>97,6 % du temps</b> est passé dans les convolutions oneDNN <code>brgconv_avx2_f32</code> (17 appels) et <code>brgconv_avx2_1x1_f32</code> (3 appels), choisies pour le jeu d'instructions AVX2 du Xeon Colab. Le reste (MaxPool, Reorder, moyenne, couche dense) représente moins de 3 %. C'est ce qui limite le gain FP32 à ×1,24 : OpenVINO supprime les opérations élémentaires, mais les convolutions sont de toute façon déjà exécutées par oneDNN dans PyTorch.</li>
+  <li><b>INT8</b> : la quantification post-entraînement (NNCF, 28 s) exécute la majorité des couches en entiers 8 bits (26 couches en u8 et 21 en i8 sur le graphe compilé). Le volume de données est divisé par 4 et les instructions entières traitent plus de valeurs par cycle : ×2,52 en débit, −71 % d'énergie estimée, au prix de 2 prédictions modifiées sur 50. Les 28 s de quantification sont amorties après environ 500 images.</li>
+</ul>
+<h2>9.2 CPU n°2 : PyTorch → TorchScript / torch.compile → CPU</h2>
+<ul>
+  <li><b>TorchScript</b> (traçage, <code>torch.jit.freeze</code> puis <code>optimize_for_inference</code>, 7,2 s) : les 20 convolutions deviennent des <code>prim::mkldnn_convolution</code> avec la BatchNorm repliée et des poids pré-convertis au format oneDNN (40 constantes MKLDNN). Les 17 ReLU et 8 additions restent des opérations séparées. Le nombre d'appels natifs par batch passe de 427 (eager) à 66 et le temps profilé de 645 à 540 ms : <b>×1,25</b>.</li>
+  <li><b>torch.compile</b> (Inductor, 34,9 s de compilation) : TorchDynamo capture le modèle en un seul graphe, sans rupture (69 opérations FX). Inductor génère du code C++ vectorisé et parallélisé (OpenMP) pour les opérations élémentaires et appelle oneDNN pour les convolutions : <b>×1,32</b>.</li>
+  <li><b>torch.compile + freezing</b> (9,2 s) : les poids deviennent des constantes, ce qui permet de replier la BatchNorm dans les convolutions et de pré-emballer les poids pour oneDNN ; 113 appels natifs par batch, 526 ms profilés : <b>×1,48</b>, la meilleure variante FP32 sur CPU, avec 26 % d'énergie estimée en moins. Les temps de préparation sont amortis après environ 450 images (TorchScript), 1 700 (torch.compile) et 340 (freezing).</li>
+</ul>
+<h2>9.3 GPU n°1 : PyTorch → ONNX → TensorRT → CUDA / cuDNN</h2>
+<ul>
+  <li><b>Middle level</b> : TensorRT analyse le même fichier ONNX et construit un moteur pour le batch 10 en 7,4 s (FP32) et 11,3 s (FP16), en chronométrant plusieurs implémentations (<i>tactics</i>) pour chaque couche sur ce T4. Les 49 nœuds ONNX deviennent <b>25 couches</b> (20 convolutions, 2 pooling, 1 gemm, 1 reformat, 1 no-op) : comme avec OpenVINO, ReLU et additions résiduelles sont fusionnées dans l'épilogue des convolutions.</li>
+  <li><b>Bas niveau</b> : PyTorch eager lance <b>106 kernels par batch</b> (9,0 ms de temps GPU), dont 20 kernels de BatchNorm (≈ 0,8 ms), 25 kernels élémentaires ReLU/Add (≈ 1,0 ms) et 9 transformations de filtres Winograd recalculées à chaque appel (≈ 0,9 ms). TensorRT ne lance que <b>24 kernels</b> (6,2 ms) : ces trois postes disparaissent. Le gain mesuré (×1,21) reste inférieur au rapport des temps GPU (×1,45) à cause des coûts fixes par batch (synchronisation CPU-GPU) et, probablement, de la baisse de fréquence d'un T4 qui fonctionne à son plafond de 70 W pendant les mesures.</li>
+  <li><b>FP16</b> : les convolutions passent sur les Tensor Cores (kernels <code>sm75_xmma…f16</code> et <code>h1688cudnn</code>), le temps GPU tombe à 1,9 ms par batch et le moteur pèse 22,6 Mo contre 52,2 Mo : <b>×4,19</b> et −77 % d'énergie par image. Le moteur est lié au GPU, à la version de TensorRT et à la taille de batch : il faut le reconstruire si l'un d'eux change. La construction est amortie après environ 43 000 images en FP32 et 15 000 en FP16.</li>
+</ul>
+<h2>9.4 GPU n°2 : PyTorch → TorchScript / torch.compile → CUDA</h2>
+<ul>
+  <li><b>TorchScript</b> (1,2 s) : BatchNorm repliée et ReLU fusionnée (49 → 25 opérations) ; 48 kernels par batch au lieu de 106, 6,0 ms de temps GPU : <b>×1,18</b>, presque autant que TensorRT FP32.</li>
+  <li><b>torch.compile</b> (18,0 s pour la première compilation) : un seul graphe sans rupture, des kernels Triton générés pour fusionner les opérations élémentaires, mais les convolutions restent confiées à cuDNN. Le temps GPU ne baisse que légèrement (8,7 ms ; 8,1 ms avec freezing, qui replie la BatchNorm) et Inductor choisit d'autres convolutions cuDNN, sans doute à cause de sa conversion de disposition mémoire, qui ne sont pas plus rapides en FP32 sur le T4. Le surcoût par appel (vérification des gardes de Dynamo, lancement des kernels depuis Python sur 2 vCPU lents) annule le gain : <b>×0,90</b>.</li>
+  <li><b>CUDA Graphs</b> (mode <code>reduce-overhead</code>) : le même nombre de kernels est exécuté (86 par batch), mais ils sont rejoués en un seul appel CPU. Le gain est faible au batch 10 (×0,92) mais net au batch 1 (×1,5), où le coût de lancement domine.</li>
+  <li><b>FP16 + CUDA Graphs</b> : Tensor Cores, 2,0 ms de temps GPU par batch, <b>×2,98</b> et −72 % d'énergie, mais une forte variabilité (CV 22,7 %).</li>
+</ul>
+
+<!-- ============================== 10 ============================== -->
+<h1 class="newpage" id="s10">10. Comparaison des pipelines et des plateformes</h1>
+<h2>10.1 Pipeline n°1 contre pipeline n°2 sur chaque plateforme</h2>
+<table class="t-small">
+  <tr><th>Critère</th><th>CPU : OpenVINO vs PyTorch</th><th>GPU : TensorRT vs PyTorch</th></tr>
+  <tr><td>Meilleur FP32</td><td>compile + freezing ×1,48 ≥ OpenVINO ×1,24 (écart non significatif : CV ≈ 20 %)</td><td>TensorRT ×1,21 ≈ TorchScript ×1,18 (écart significatif mais faible : 1 235 contre 1 152 img/s)</td></tr>
+  <tr><td>Précision réduite</td><td>OpenVINO INT8 ×2,52 (2 prédictions sur 50 modifiées) ; pas d'équivalent mesuré côté PyTorch</td><td>TensorRT FP16 ×4,19 contre torch.compile FP16 ×2,98 : TensorRT 1,46 fois plus rapide et 21 % plus sobre</td></tr>
+  <tr><td>Stabilité</td><td>Équivalente (CV 15–23 % partout)</td><td>TensorRT FP16 bien plus stable (CV 2,6 % contre 22,7 %)</td></tr>
+  <tr><td>Préparation</td><td>OpenVINO 1,2 s (+ 28 s pour l'INT8) ; TorchScript 7,2 s ; torch.compile 9 à 35 s</td><td>TensorRT 7 à 11 s ; TorchScript 1,2 s ; torch.compile 5 à 18 s</td></tr>
+  <tr><td>Déploiement</td><td>Format ONNX portable, runtime indépendant de PyTorch, spécialisé Intel</td><td>Moteur figé, lié au GPU, à TensorRT et au batch ; hors de Python</td></tr>
+</table>
+<p>Les moteurs spécialisés (OpenVINO, TensorRT) l'emportent surtout grâce aux précisions réduites qu'ils rendent faciles à exploiter (INT8, FP16 « strongly typed » avec choix des kernels par chronométrage). En FP32, l'approche intégrée à PyTorch fait presque jeu égal : TorchScript avec freezing obtient sur GPU un gain presque identique à celui de TensorRT pour une préparation de 1,2 s, et torch.compile avec freezing est la meilleure variante FP32 sur CPU. torch.compile n'est en revanche pas adapté à ce modèle sur ce GPU en FP32 : il est plus lent qu'eager au batch 10.</p>
+<h2>10.2 CPU contre GPU</h2>
+<ul>
+  <li><b>Débit</b> : à implémentation égale (PyTorch eager FP32), le T4 est <b>78 à 93 fois plus rapide</b> que les 2 vCPU Colab (980–1 020 contre 11–12,6 img/s). Entre les meilleures variantes, l'écart atteint ×155 (TensorRT FP16 4 272 img/s contre OpenVINO INT8 27,6 img/s), et ×66 en FP32 (TensorRT contre torch.compile + freezing).</li>
+  <li><b>Latence</b> : 2,3 à 11 ms par batch sur GPU contre 370 à 955 ms sur CPU. Pour un service interactif, seul le GPU passe sous les 10 ms par batch.</li>
+  <li><b>Énergie</b> : 16 à 79 mJ par image sur GPU (mesurée) contre 558 à 1 896 mJ sur CPU (estimée), soit un rapport de 23 à 35 selon les variantes, avec les réserves de la section 7.</li>
+  <li><b>Stabilité</b> : le GPU donne des mesures 15 à 30 fois moins dispersées en FP32 (CV ≈ 1 % contre ≈ 20 %).</li>
+  <li><b>Effet des optimisations</b> : sur les deux plateformes, le gain FP32 est limité (×0,9 à ×1,5) parce que les convolutions, déjà optimisées par oneDNN ou cuDNN, dominent. Seule la réduction de précision change d'ordre de grandeur.</li>
+</ul>
+
+<!-- ============================== 11 ============================== -->
+<h1 id="s11">11. Limites de l'étude</h1>
+<ul>
+  <li><b>Énergie CPU estimée</b> : sans RAPL, l'énergie CPU dépend d'une hypothèse (10 W par vCPU actif) et n'inclut pas le reste de la machine ; l'énergie GPU ne mesure que la carte.</li>
+  <li><b>Variabilité CPU</b> : avec des CV de l'ordre de 20 %, 10 passes ne suffisent pas à départager les variantes FP32 sur CPU ; il faudrait davantage de passes et de sessions, ou une machine dédiée.</li>
+  <li><b>Sessions et machines différentes</b> : les notebooks CPU ont été exécutés le 16 novembre et les notebooks GPU le 25 novembre, sur des VM différentes (Xeon 2,2 GHz côté CPU, Xeon 2,0 GHz hôte du GPU). Les comparaisons s'appuient donc sur les accélérations par rapport à la référence de chaque session. Seul le pipeline GPU n°1 a été exécuté dans deux sessions indépendantes ; il faudrait répéter les autres pour confirmer leur reproductibilité.</li>
+  <li><b>Petit échantillon</b> : 50 images ne permettent pas de mesurer finement une perte de précision (une image vaut 2 points de Top-1) ; l'effet de l'INT8 devrait être évalué sur tout le jeu de test.</li>
+  <li><b>Un seul modèle et un seul batch commun</b> : ResNet-18 est dominé par les convolutions ; un modèle avec plus d'opérations élémentaires (Transformer, par exemple) profiterait davantage de la fusion d'opérateurs.</li>
+</ul>
+
+<!-- ============================== 12 ============================== -->
+<h1 id="s12">12. Conclusion</h1>
+<p>Les quatre chaînes de déploiement produisent les mêmes prédictions que le modèle PyTorch d'origine en FP32 et en FP16, ce qui confirme que les couches intermédiaires (format ONNX ou TorchScript, compilateurs et runtimes) peuvent être optimisées sans dégrader les résultats. Leur effet sur les performances dépend fortement de la couche concernée :</p>
+<ul>
+  <li>le <b>matériel</b> fixe l'ordre de grandeur : le T4 est 78 à 93 fois plus rapide que les 2 vCPU Colab pour le même code ;</li>
+  <li>le <b>middle level</b> (fusion d'opérateurs, repliement de la BatchNorm, choix des kernels) apporte ×1,2 à ×1,5 en FP32 sur ce modèle dominé par les convolutions, et peut même ralentir l'inférence (torch.compile sur GPU) ;</li>
+  <li>la <b>précision numérique</b>, que les moteurs spécialisés rendent facile à exploiter, est le levier le plus puissant : ×2,5 en INT8 sur CPU, ×4,2 en FP16 sur GPU, avec une énergie par image divisée d'autant.</li>
+</ul>
+<p>Pour servir ce ResNet-18, nous recommandons <b>TensorRT FP16 sur GPU</b> (4 272 img/s, 2,3 ms par batch, 15,9 mJ par image, résultats stables et reproductibles). Sur CPU, <b>OpenVINO INT8</b> est le choix le plus rapide si une légère variation des prédictions est acceptable ; sinon, torch.compile avec freezing ou OpenVINO FP32 apportent un gain plus modeste. Enfin, les mesures CPU sur Colab sont trop variables pour conclure sur des écarts de quelques dizaines de pourcents : la reproductibilité des résultats doit être vérifiée par des exécutions répétées, comme nous l'avons fait pour le pipeline TensorRT.</p>
+
+<!-- ============================== ANNEXE ============================== -->
+<h1 class="newpage" id="sA">Annexe : environnements logiciels et fichiers du dépôt</h1>
+<table class="t-small">
+  <tr><th>Élément</th><th>CPU (notebooks CPU n°1 et n°2)</th><th>GPU (notebooks GPU n°1 et n°2)</th></tr>
+  <tr><td>Processeur</td><td>Intel Xeon @ 2,20 GHz, 2 vCPU</td><td>Intel Xeon @ 2,00 GHz, 2 vCPU (hôte)</td></tr>
+  <tr><td>Accélérateur</td><td>—</td><td>NVIDIA Tesla T4, 15 Go, sm 7.5, 70 W, pilote 580.82</td></tr>
+  <tr><td>Python / PyTorch</td><td>Python 3.13, PyTorch 2.14.1+cpu, torchvision 0.29.1</td><td>PyTorch 2.14.1+cu130, CUDA 13.0, cuDNN 9.28, Triton 3.8.0</td></tr>
+  <tr><td>Runtimes</td><td>OpenVINO 2026.4.1 ; ONNX (opset 17)</td><td>TensorRT 11.5.0.63 ; ONNX 1.23.2</td></tr>
+  <tr><td>Énergie</td><td>Estimation psutil (RAPL indisponible)</td><td>NVML (nvidia-ml-py)</td></tr>
+</table>
+<h3>Organisation du dépôt</h3>
+<table class="t-small">
+  <tr><th>Chemin</th><th>Contenu</th></tr>
+  <tr><td><code>notebooks/</code></td><td>Les quatre notebooks Colab exécutés (un par pipeline), avec leurs sorties, profils et graphiques</td></tr>
+  <tr><td><code>rapport/</code></td><td>Ce rapport (PDF) et sa source HTML</td></tr>
+  <tr><td><code>figures/</code></td><td>Les sept graphiques de comparaison de ce rapport</td></tr>
+  <tr><td><code>resultats/resultats.json</code></td><td>Les mesures utilisées dans ce rapport (moyennes, écarts-types, min, max, CV, énergie)</td></tr>
+  <tr><td><code>scripts/figures.py</code></td><td>Le script qui régénère les figures à partir de <code>resultats.json</code></td></tr>
+</table>
+<h3>Reproduire les mesures</h3>
+<p>Ouvrir chaque notebook dans Google Colab, choisir le type d'exécution (CPU pour les notebooks CPU, GPU T4 pour les notebooks GPU), puis Exécution → Tout exécuter en autorisant l'accès à Google Drive. Le premier notebook exécuté crée les fichiers communs (images, poids, ONNX) dans <code>MyDrive/TP_Deploiement_IA/shared</code> ; les suivants les rechargent. La section de comparaison de chaque notebook rassemble les résultats déjà présents dans <code>MyDrive/TP_Deploiement_IA/results</code>.</p>
+
+</body>
+</html>
