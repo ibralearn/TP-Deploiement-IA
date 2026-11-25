@@ -1,5 +1,7 @@
 # Chaînes de déploiement d'un modèle d'IA — TP n°1
 
+**Auteurs :** Ibrahim CISSE et Tolo Fabrice MILLOGO
+
 Comparaison de **quatre pipelines d'inférence** d'un même modèle PyTorch (ResNet-18 pré-entraîné ImageNet, tête 10 classes) sur **CPU** et **GPU** dans Google Colab, en suivant l'enchaînement *haut niveau → format du modèle → middle level → bas niveau → matériel*.
 
 | | Pipeline | Format | Middle level | Bas niveau | Matériel |
@@ -20,7 +22,7 @@ Comparaison de **quatre pipelines d'inférence** d'un même modèle PyTorch (Res
 │   ├── Pipeline_CPU1_PyTorch_ONNX_OpenVINO.ipynb
 │   ├── Pipeline_CPU2_PyTorch_TorchScript_TorchCompile.ipynb
 │   ├── Pipeline_GPU1_PyTorch_ONNX_TensorRT.ipynb
-│   └── Pipeline_GPU2_PyTorch_TorchScript_TorchCompile.ipynb
+│   └── Pipeline_GPU2_PyTorch_TorchScript_TorchCompile.ipynb   (chaque notebook se termine par sa section d'analyse rédigée)
 ├── figures/                            ← graphiques de comparaison des 4 pipelines
 ├── resultats/
 │   ├── resultats.json                  ← mesures de synthèse utilisées dans le rapport et les figures

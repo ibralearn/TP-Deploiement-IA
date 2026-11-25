@@ -60,7 +60,7 @@
     <div class="subtitle">Rapport technique du TP n°1 — comparaison de quatre pipelines d'inférence de ResNet-18 sur CPU et GPU (Google Colab)</div>
     <div class="bar"></div>
     <div class="meta">
-      <b>Auteurs</b> [noms des membres du groupe à compléter]<br>
+      <b>Auteurs</b> Ibrahim CISSE et Tolo Fabrice MILLOGO<br>
       <b>Modèle</b> ResNet-18 pré-entraîné ImageNet, tête 10 classes<br>
       <b>Données</b> 50 images de test CIFAR-10 (5 par classe)<br>
       <b>Pipeline CPU n°1</b> PyTorch → ONNX → OpenVINO → CPU<br>
@@ -214,9 +214,9 @@
 <!-- ============================== 7 ============================== -->
 <h1 id="s7">7. Consommation énergétique</h1>
 <figure><img src="../figures/fig4_energie.png" alt="Énergie par image">
-<div class="caption">Figure 5 — Énergie par image (moyenne ± écart-type sur 3 mesures). À gauche, estimation CPU (10 W × temps CPU actif) ; à droite, mesure NVML de la carte GPU.</div></figure>
-<p><b>Sur GPU</b>, la puissance moyenne en charge est presque identique pour toutes les variantes (66,6 à 68,6 W, près du plafond de 70 W du T4). L'énergie par image suit donc directement le temps par image (E ≈ P × t) : par exemple 68,3 W × 0,98 ms ≈ 67 mJ pour eager (69,0 mJ mesurés). La variante la plus rapide est aussi la plus sobre : TensorRT FP16 consomme <b>15,9 mJ par image, soit 77 % de moins qu'eager</b> ; torch.compile FP16, 20,0 mJ (−72 %) ; TensorRT FP32 et TorchScript, −19 % et −16 %. À l'inverse, les variantes torch.compile FP32, plus lentes, consomment 5 à 9 % de plus qu'eager.</p>
-<p><b>Sur CPU</b>, l'estimation est proportionnelle au temps CPU consommé. Les variantes PyTorch occupent les deux vCPU (≈ 20 W estimés), si bien que leur gain d'énergie suit leur gain de temps (−19 à −26 %). OpenVINO occupe moins de temps CPU pour le même travail (≈ 14 W estimés) : son gain d'énergie (−45 % en FP32, −71 % en INT8) dépasse son gain de débit. Cette lecture dépend toutefois entièrement de l'hypothèse de 10 W par vCPU actif.</p>
+<div class="caption">Figure 5 — Consommation énergétique. En haut, énergie par image ; en bas, puissance moyenne pendant l'inférence (moyenne ± écart-type sur 3 mesures). À gauche, estimation CPU (10 W par vCPU actif × temps CPU actif) ; à droite, mesure NVML de la carte GPU (plafond du T4 : 70 W).</div></figure>
+<p><b>Sur GPU</b>, la puissance moyenne en charge (figure 5, en bas à droite) est presque identique pour toutes les variantes (66,5 à 68,6 W, près du plafond de 70 W du T4, contre 26 à 28 W au repos). L'énergie par image suit donc directement le temps par image (E ≈ P × t) : par exemple 68,3 W × 0,98 ms ≈ 67 mJ pour eager (69,0 mJ mesurés). La variante la plus rapide est aussi la plus sobre : TensorRT FP16 consomme <b>15,9 mJ par image, soit 77 % de moins qu'eager</b> ; torch.compile FP16, 20,0 mJ (−72 %) ; TensorRT FP32 et TorchScript, −19 % et −16 %. À l'inverse, les variantes torch.compile FP32, plus lentes, consomment 5 à 9 % de plus qu'eager.</p>
+<p><b>Sur CPU</b> (figure 5, à gauche), l'estimation est proportionnelle au temps CPU consommé. Les variantes PyTorch occupent les deux vCPU (≈ 20 W estimés), si bien que leur gain d'énergie suit leur gain de temps (−19 à −26 %). OpenVINO occupe moins de temps CPU pour le même travail (≈ 14 W estimés) : son gain d'énergie (−45 % en FP32, −71 % en INT8) dépasse son gain de débit. Cette lecture dépend toutefois entièrement de l'hypothèse de 10 W par vCPU actif.</p>
 <div class="box warn"><p><b>Comparaison CPU / GPU à interpréter avec prudence.</b> À la référence eager, l'énergie par image est de 1 623 à 1 896 mJ sur CPU (estimée) contre 69 à 72 mJ sur GPU (mesurée), soit un rapport de 23 à 27. Mais la valeur GPU ne compte que la carte (ni le CPU hôte qui pilote le GPU, ni la mémoire), et la valeur CPU repose sur une hypothèse de puissance. Le sens de l'écart est robuste (le GPU traite chaque image ~90 fois plus vite pour une puissance seulement ~3,5 fois plus élevée), sa valeur exacte ne l'est pas.</p></div>
 
 <!-- ============================== 8 ============================== -->

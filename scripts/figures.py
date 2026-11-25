@@ -72,10 +72,28 @@ two_panel("thr", "fig1_debit.png", "images / s (moyenne ± écart-type, 10 passe
 two_panel("lat", "fig2_latence.png", "ms par batch de 10 images (moyenne ± écart-type)",
           "Temps d'inférence (latence d'un batch de 10 images)", lambda m: fr(m, 1 if m > 100 else 2),
           key=lambda v: v["lat"], titles={"CPU": "CPU (Xeon 2,2 GHz, 2 vCPU)", "GPU": "GPU (Tesla T4)"})
-# 4. Énergie
-two_panel("E", "fig4_energie.png", "mJ par image (moyenne ± écart-type, 3 mesures)",
-          "Énergie consommée par image", lambda m: fr(m, 0 if m > 100 else 1), key=lambda v: v["E"],
-          titles={"CPU": "CPU — ESTIMÉE (10 W × temps CPU actif)", "GPU": "GPU — MESURÉE (NVML, carte seule)"})
+# 4. Énergie par image + puissance (consommation énergétique)
+ST = json.load(open(os.path.join(ROOT, "resultats", "statistiques_detaillees.json")))["variantes"]
+fig, axes = plt.subplots(2, 2, figsize=(11, 9.2))
+for col, plat in enumerate(["CPU", "GPU"]):
+    vs = [v for v in V if v["platform"] == plat]
+    hbars(axes[0, col], vs, [v["E"][0] for v in vs], [v["E"][1] for v in vs],
+          lambda m: fr(m, 0 if m > 100 else 1), "mJ par image (moyenne ± écart-type, 3 mesures)",
+          "CPU — énergie par image, ESTIMÉE" if plat == "CPU" else "GPU — énergie par image, MESURÉE (NVML)")
+    pw = [ST[v["id"]]["puissance"] for v in vs]
+    hbars(axes[1, col], vs, [p[0] for p in pw], [p[1] or 0 for p in pw], lambda m: fr(m, 1),
+          "W (moyenne" + (" ± écart-type, 3 mesures)" if plat == "GPU" else " ; estimation : 10 W par vCPU actif)"),
+          "CPU — puissance moyenne, ESTIMÉE" if plat == "CPU" else "GPU — puissance moyenne de la carte, MESURÉE",
+          xmax=26 if plat == "CPU" else 90)
+    if plat == "GPU":
+        axes[1, col].axvline(70, color=TXT2, lw=0.9, ls="--")
+        axes[1, col].text(70.6, len(vs) - 0.45, "plafond T4 : 70 W", fontsize=7.5, color=TXT2)
+fig.suptitle("Consommation énergétique : énergie par image et puissance moyenne pendant l'inférence", x=0.01, ha="left",
+             fontsize=12, fontweight="bold", color=TXT)
+legend(fig, y=-0.01, extra=("FP16", "INT8"))
+fig.tight_layout(rect=(0, 0.06, 1, 0.96))
+fig.savefig(os.path.join(OUT, "fig4_energie.png"), bbox_inches="tight")
+plt.close(fig)
 
 # 3. Top-1 + accord
 fig, axes = plt.subplots(1, 2, figsize=(11, 5.2))
